@@ -15,7 +15,7 @@ The codebase is structured to ensure operational resilience and low resource con
 
 ### 1. Real-Time Monitoring (`main2.py`)
 The primary inference script running continuously on the Edge device.
-* **Tracking and Detection:** Uses YOLO models integrated with the BoT-SORT algorithm.
+* **Tracking and Detection:** Uses YOLO models.
 * **Spatio-Temporal Logic:** Implements a state machine with hysteresis (different frame thresholds for entry and exit) and a kinematic filter (apparent zero velocity requirement). This rejects temporary occlusions, brief maneuvers, and passing traffic.
 * **Database Synchronization:** Handles transactional updates of parking spot states and historical logs in PostgreSQL.
 
