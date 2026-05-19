@@ -9,13 +9,12 @@ import os
 import time
 from ultralytics import YOLO
 
-# --- CONFIGURACOES GERAIS (Muda apenas aqui para cada teste) ---
+
 FRAMES_DIR = "/home/rasp-1/Desktop/parking_2.0/media/frames_china"
 CSV_OUT = "historico_carros_linebased_china.csv"
 MODEL_NAME = "yolo26n.pt"
-VEHICLE_CLASSES = [2, 3, 5, 7] # Carro, Mota, Autocarro, Camiao
+VEHICLE_CLASSES = [2, 3, 5, 7] 
 
-# Cria o ficheiro CSV e o cabecalho se nao existirem
 if not os.path.exists(CSV_OUT):
     df_vazio = pd.DataFrame(columns=['timestamp', 'track_id', 'cx', 'cy', 'w', 'h'])
     df_vazio.to_csv(CSV_OUT, index=False)
@@ -26,9 +25,7 @@ model = YOLO(MODEL_NAME)
 last_processed = None
 ultimo_registo_time = time.time()
 
-# --- A MAGIA ANTI-MISTURAS ---
-# Cria um numero gigante baseado na hora a que o script arranca.
-# Vamos somar isto aos IDs do YOLO para que os IDs de hoje nunca se misturem com os de ontem!
+
 SESSION_OFFSET = int(time.time())
 
 def jpeg_completo(path):
@@ -80,7 +77,7 @@ while True:
             if results.boxes and results.boxes.id is not None:
                 boxes = results.boxes.xywh.cpu().numpy() 
                 
-                # SOMA O SESSION_OFFSET AOS IDs ORIGINAIS DO YOLO
+             
                 ids = results.boxes.id.cpu().numpy().astype(int) + SESSION_OFFSET
                 
                 for b, t in zip(boxes, ids):
