@@ -205,7 +205,7 @@ while True:
     # LÓGICA DE VAGAS NORMAIS (HISTERESE + CINEMÁTICA)
     # ======================================================
     FRAMES_PARA_OCUPAR = 5
-    FRAMES_PARA_LIBERTAR = 10
+    FRAMES_PARA_LIBERTAR = 5
 
     detecoes_neste_frame = {}
     info_carros = {}
