@@ -1,14 +1,3 @@
-# ============================================
-# SMART PARKING - VERSÃO FINAL (EDGE OPTIMIZED)
-# ============================================
-# Foco Exclusivo na Monitorização de Ocupação:
-# 1. Inferência leve baseada em Ponto Central (Pés)
-# 2. Polígonos de alta precisão gerados via Segmento de Contacto (vagas_linha.json)
-# 3. Histerese Temporal (5 frames p/ ocupar, 10 p/ libertar)
-# 4. Filtro Cinemático (Validação de Velocidade Zero)
-# 5. Sincronização robusta com Base de Dados PostgreSQL
-# ============================================
-
 import cv2
 import json
 import numpy as np
@@ -28,7 +17,7 @@ from dotenv import load_dotenv
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# --- PERFORMANCE ---
+
 MODEL_NAME = "yolo26s.pt"      
 
 def executar_sql(query, params=None, fetch=False):
@@ -43,7 +32,7 @@ def executar_sql(query, params=None, fetch=False):
         cursor.close()
         return result
     except Exception as e:
-        print(f"❌ Erro SQL: {e}")
+        print(f" Erro SQL: {e}")
         return None
     finally:
         if conn: conn.close()
@@ -64,7 +53,7 @@ VEHICLE_CLASSES = [2, 3, 5, 7]
 # 3. FUNÇÕES DE BASE DE DADOS
 # --------------------------------------------
 def inicializar_lugares_db(prefixo, quantidade, tipo):
-    print(f"⚙️ A verificar {quantidade} lugares '{tipo}'...")
+    print(f" A verificar {quantidade} lugares '{tipo}'...")
     for i in range(quantidade):
         spot_id = f"{prefixo}-{i+1:02d}"
         executar_sql("INSERT INTO lugares (id, tipo, estado) VALUES (%s, %s, %s) ON CONFLICT (id) DO NOTHING;", (spot_id, tipo, "livre"))
@@ -82,13 +71,13 @@ def carregar_estado_inicial(prefixo_filtro):
 
 def registar_entrada(spot_id, car_id):
     car_id_int = int(car_id)
-    print(f"🚨 OCUPAÇÃO: {spot_id} (Carro {car_id_int})")
+    print(f" OCUPAÇÃO: {spot_id} (Carro {car_id_int})")
     agora = datetime.utcnow()
     executar_sql("UPDATE lugares SET estado = 'ocupado', carro_atual_id = %s, ultimo_update = %s WHERE id = %s;", (car_id_int, agora, spot_id))
     executar_sql("INSERT INTO historico (lugar_id, carro_id, entrada) VALUES (%s, %s, %s);", (spot_id, car_id_int, agora))
 
 def registar_saida(spot_id, car_id):
-    print(f"✅ LIVRE: {spot_id}")
+    print(f" LIVRE: {spot_id}")
     agora = datetime.utcnow()
     executar_sql("UPDATE lugares SET estado = 'livre', carro_atual_id = NULL, ultimo_update = %s WHERE id = %s;", (agora, spot_id))
     if car_id:
@@ -121,13 +110,12 @@ roi_master = unary_union(roi_polys) if roi_polys else None
 
 vagas_polys, vagas_points = load_zones(JSON_VAGAS)
 
-# Memória de Estados
+
 estado_lugares = {}
 buffers_vagas = {} 
 
-# Filtro Cinemático
 historico_posicoes = {}
-LIMITE_MOVIMENTO = 5 # Pixeis máximos de deslocamento p/ considerar imobilizado
+LIMITE_MOVIMENTO = 5 
 
 for i in range(len(vagas_polys)): 
     spot_id = f"A-{i+1:02d}"
@@ -137,7 +125,7 @@ for i in range(len(vagas_polys)):
 if DATABASE_URL:
     try:
         inicializar_lugares_db("A", len(vagas_polys), "normal")
-        print("📥 A recuperar estados das vagas normais da Base de Dados...")
+        print(" A recuperar estados das vagas normais da Base de Dados...")
         dados_A = carregar_estado_inicial("A")
         if dados_A:
             for spot_id, data in dados_A.items():
@@ -148,7 +136,7 @@ if DATABASE_URL:
         print(f"❌ Erro no arranque da DB: {e}")
 
 last_processed = None
-print("\n🚀 Monitorização Ativa (Footpoint + Filtro Cinemático).")
+print("\n Monitorização Ativa (Footpoint + Filtro Cinemático).")
 
 def jpeg_completo(path):
     try:
@@ -176,7 +164,7 @@ while True:
     except (FileNotFoundError, OSError):
         continue
 
-    # Tracking Otimizado YOLO26
+  
     results = model.track(
         frame, 
         tracker="bytetrack.yaml", 
@@ -193,10 +181,10 @@ while True:
         for b, t in zip(raw_boxes, raw_ids):
             ponto_central = get_feet_center(b)
             
-            # Se não estiver na ROI, ignora logo
+            
             if roi_master and not roi_master.contains(Point(ponto_central)): continue
             
-            # Filtro Cinemático (Cálculo de Velocidade Aparente)
+            
             is_stopped = False
             if t in historico_posicoes:
                 ponto_anterior = historico_posicoes[t]
@@ -222,7 +210,7 @@ while True:
     detecoes_neste_frame = {}
     info_carros = {}
     
-    # Mapear qual carro está em qual vaga
+    
     for i, poly in enumerate(vagas_polys):
         spot_id = f"A-{i+1:02d}"
         for data in boxes_data:
@@ -231,14 +219,14 @@ while True:
                 detecoes_neste_frame[spot_id] = data['id']
                 break
     
-    # Máquina de Estados para cada Vaga
+    
     for spot_id in [k for k in estado_lugares if k.startswith("A")]:
         state = estado_lugares[spot_id]
         carro_detectado = detecoes_neste_frame.get(spot_id)
         buffer = buffers_vagas[spot_id]
 
         if carro_detectado:
-            # Requisito Duplo: Estar na vaga E estar imobilizado
+            
             if info_carros.get(carro_detectado, False):
                 buffer['contagem_entrada'] += 1
                 buffer['contagem_saida'] = 0 
@@ -247,7 +235,7 @@ while True:
                     registar_entrada(spot_id, carro_detectado)
                     estado_lugares[spot_id] = {'occupied': True, 'car_id': carro_detectado}
             else:
-                # Carro está a passar por cima da vaga mas a mexer-se. Evita falsos positivos.
+                
                 buffer['contagem_entrada'] = 0
                 buffer['contagem_saida'] = 0
         else:

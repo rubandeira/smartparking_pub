@@ -12,7 +12,6 @@ os.makedirs(FRAMES_DIR, exist_ok=True)
 INTERVALO = 0.5
 MAX_FRAMES = 30
 
-# Otimização: Pedir apenas vídeo (poupa internet e CPU) e limitar a 720p se possível
 ydl_opts = {
     "quiet": True,
     "no_warnings": True,
@@ -34,7 +33,7 @@ def clean_old_frames():
         files = sorted(
             [f for f in os.listdir(FRAMES_DIR) if f.lower().endswith((".jpg", ".png"))]
         )
-        # Se tiver mais ficheiros que o MAX, apaga os mais antigos
+
         if len(files) > MAX_FRAMES:
             for f in files[:-MAX_FRAMES]:
                 try:
@@ -49,13 +48,12 @@ def clean_old_frames():
 # =============================================================
 
 stream_url = get_stream_url()
-while not stream_url: # Garante que temos URL antes de começar
-    time.sleep(5)
+while not stream_url: 
     stream_url = get_stream_url()
 
 cap = cv2.VideoCapture(stream_url)
 
-# Tenta diminuir o tamanho do buffer interno do OpenCV (nem sempre funciona em todos os backends, mas ajuda)
+
 cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
 last_save_time = time.time()
@@ -65,7 +63,7 @@ fail_count = 0
 # LOOP PRINCIPAL
 # =============================================================
 
-print("🚀 Iniciando captura em tempo real...")
+print("Iniciando captura em tempo real...")
 
 while True:
     # 1. Lê o frame IMEDIATAMENTE (sem sleeps antes)
@@ -101,7 +99,3 @@ while True:
 
         # Atualiza o relógio
         last_save_time = current_time
-    
-    # IMPORTANTE: Não há time.sleep() aqui no final! 
-    # O loop corre à velocidade máxima do vídeo (ex: 30fps) para esvaziar o buffer,
-    # mas o 'if' acima garante que só guardamos imagens a cada 0.5s.
